@@ -36,7 +36,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       `Uploaded image is ${img.width}x${img.height}px. Loading the encoder model (~28 MB).`
     );
     setIsLoading(true);
-    ONNX_WEBGPU.env.wasm.numThreads = 1;
+    // ONNX_WEBGPU.env.wasm.numThreads = 1;
     const resizedTensor = await ONNX_WEBGPU.Tensor.fromImage(img, {
       resizedWidth: 1024,
       resizedHeight: 684,
@@ -51,13 +51,68 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     tf_tensor = tf_tensor.reshape([3, 684, 1024]);
     tf_tensor = tf_tensor.transpose([1, 2, 0]).mul(255);
 
-    ONNX_WEBGPU.env.wasm.numThreads = 1;
+    // ONNX_WEBGPU.env.wasm.numThreads = 1;
     // any Blob that contains a valid ORT model would work
-    const response = await fetch("models/mobilesam.encoder.onnx");
-    const arrayBuffer = await (await response.blob()).arrayBuffer();
+    // const response = await fetch("models/mobilesam.encoder.onnx");
+    // const arrayBuffer = await (await response.blob()).arrayBuffer();
+    // const session = await ONNX_WEBGPU.InferenceSession.create(arrayBuffer, {
+    //   executionProviders: ["webgpu"],
+    // });
+    const response = await fetch(
+      "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+        mode: "cors",
+        credentials: "omit",
+      }
+    );
+
+    // Check if the response is ok
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Get the total size of the file
+    const totalSize = Number(response.headers.get("Content-Length"));
+
+    // Create a new Uint8Array to store the file contents
+    const buffer = new Uint8Array(totalSize);
+    let receivedLength = 0;
+
+    // Get the reader from the response body
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("Failed to get reader for model stream");
+    }
+
+    // Read the data
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer.set(value, receivedLength);
+      receivedLength += value.length;
+
+      // You can add a progress indicator here if needed
+      // const percentComplete = (receivedLength / totalSize) * 100;
+      // console.log(`Downloaded ${percentComplete.toFixed(2)}%`);
+    }
+
+    // Create a blob from the buffer
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+
+    // Convert blob to ArrayBuffer
+    const arrayBuffer = await blob.arrayBuffer();
+
+    // Create the inference session using the downloaded model data
     const session = await ONNX_WEBGPU.InferenceSession.create(arrayBuffer, {
       executionProviders: ["webgpu"],
     });
+
+    console.log("Session created", session);
     const feeds = {
       input_image: new ONNX_WEBGPU.Tensor(
         tf_tensor.dataSync(),
