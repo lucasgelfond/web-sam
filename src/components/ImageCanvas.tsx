@@ -22,7 +22,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
   const handleClick = useCallback(
     async (event: MouseEvent) => {
       const canvas = canvasRef.current;
-      if (!canvas || !imageImageData) return;
+      if (!canvas || !imageImageData || !imageEmbeddings) return;
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
@@ -40,28 +40,36 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
       context.putImageData(imageImageData, 0, 0);
       context.fillStyle = "green";
       context.fillRect(x, y, 5, 5);
-      const pointCoords = new ONNX_WEBGPU.Tensor(
-        new Float32Array([x, y, 0, 0]),
-        [1, 2, 2]
-      );
-      const pointLabels = new ONNX_WEBGPU.Tensor(
-        new Float32Array([0, -1]),
-        [1, 2]
-      );
+
+      const preparePoints = (coords: number[], labels: number[]) => {
+        const inputPointCoords = new Float32Array([coords[0], coords[1], 0, 0]);
+        const inputPointLabels = new Float32Array([labels[0], -1]);
+
+        // Normalize coordinates
+        inputPointCoords[0] = (inputPointCoords[0] / canvas.width) * 1024;
+        inputPointCoords[1] = (inputPointCoords[1] / canvas.height) * 1024;
+
+        return { inputPointCoords, inputPointLabels };
+      };
+
+      const { inputPointCoords, inputPointLabels } = preparePoints([x, y], [1]);
+
+      const pointCoords = new ONNX_WEBGPU.Tensor(inputPointCoords, [1, 2, 2]);
+      const pointLabels = new ONNX_WEBGPU.Tensor(inputPointLabels, [1, 2]);
       const maskInput = new ONNX_WEBGPU.Tensor(
         new Float32Array(256 * 256),
         [1, 1, 256, 256]
       );
       const hasMask = new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]);
       const originalImageSize = new ONNX_WEBGPU.Tensor(
-        new Float32Array([684, 1024]),
+        new Float32Array([canvas.height, canvas.width]),
         [2]
       );
 
       const url = isUsingMobileSam
         ? "https://sam2-download.b-cdn.net/models/mobilesam.decoder.quant.onnx"
-        : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.decoder.ort";
-      // Fetch the encoder model
+        : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.decoder.onnx";
+      // Fetch the decoder model
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -75,73 +83,93 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Get the total size of the file
-      const totalSize = Number(response.headers.get("Content-Length"));
-
-      // Create a buffer to store the file contents
-      const buffer = new Uint8Array(totalSize);
-      let receivedLength = 0;
-
-      // Get the reader from the response body
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("Failed to get reader for model stream");
-      }
-
-      // Read the data in chunks
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer.set(value, receivedLength);
-        receivedLength += value.length;
-
-        // You can add a progress indicator here if needed
-        // const percentComplete = (receivedLength / totalSize) * 100;
-        // console.log(`Downloaded ${percentComplete.toFixed(2)}%`);
-      }
+      const arrayBuffer = await response.arrayBuffer();
 
       // Create the decoding session using the downloaded model data
       const decodingSession = await ONNX_WEBGPU.InferenceSession.create(
-        buffer,
+        arrayBuffer,
         {
           executionProviders: ["webgpu"],
         }
       );
 
-      // console.log("Decoder session created from stream");
-      // const response = await fetch("models/mobilesam.decoder.quant.onnx");
-      // const arrayBuffer = await (await response.blob()).arrayBuffer();
-      // const decodingSession = await ONNX_WEBGPU.InferenceSession.create(
-      //   arrayBuffer,
-      //   {
-      //     executionProviders: ["webgpu"],
-      //   }
-      // );
-      console.log("Decoder session", decodingSession);
+      const prepareInputs = (
+        imageEmbed: ONNX_WEBGPU.Tensor,
+        highResFeats0: ONNX_WEBGPU.Tensor,
+        highResFeats1: ONNX_WEBGPU.Tensor,
+        pointCoords: ONNX_WEBGPU.Tensor,
+        pointLabels: ONNX_WEBGPU.Tensor
+      ) => {
+        const maskInput = new ONNX_WEBGPU.Tensor(
+          new Float32Array(256 * 256),
+          [1, 1, 256, 256]
+        );
+        const hasMaskInput = new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]);
+
+        return {
+          image_embed: imageEmbed,
+          high_res_feats_0: highResFeats0,
+          high_res_feats_1: highResFeats1,
+          point_coords: pointCoords,
+          point_labels: pointLabels,
+          mask_input: maskInput,
+          has_mask_input: hasMaskInput,
+        };
+      };
+
       const decodingFeeds = {
-        image_embed: imageEmbeddings.cpuData,
-        // @ts-ignore
-        high_res_feats_0: highResFeats.high_res_feats_0,
-        // @ts-ignore
-        high_res_feats_1: highResFeats.high_res_feats_1,
+        image_embed: new ONNX_WEBGPU.Tensor(
+          new Float32Array(imageEmbeddings.image_embed.data),
+          imageEmbeddings.image_embed.dims
+        ),
+        high_res_feats_0: new ONNX_WEBGPU.Tensor(
+          new Float32Array(highResFeats.high_res_feats_0.data),
+          highResFeats.high_res_feats_0.dims
+        ),
+        high_res_feats_1: new ONNX_WEBGPU.Tensor(
+          new Float32Array(highResFeats.high_res_feats_1.data),
+          highResFeats.high_res_feats_1.dims
+        ),
         point_coords: pointCoords,
         point_labels: pointLabels,
-        mask_input: maskInput,
-        has_mask_input: hasMask,
+        mask_input: new ONNX_WEBGPU.Tensor(
+          new Float32Array(256 * 256),
+          [1, 1, 256, 256]
+        ),
+        has_mask_input: new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]),
       };
 
       const start = Date.now();
       try {
-        const results = await decodingSession.run(decodingFeeds);
-        const mask = results.masks;
-        const maskImageData = mask.toImageData();
+        // Run inference
+        const results = await decodingSession.run(decodingFeeds, {
+          masks: true,
+          iou_predictions: true,
+        });
+        console.log("Decoding results", results);
+        const masks = results.masks;
+        const scores = results.scores;
+
+        // Process the output
+        const maskThreshold = 0.0;
+        const processedMask = masks.data.map((value: number) =>
+          value > maskThreshold ? 1 : 0
+        );
+
+        const maskImageData = new ImageData(
+          new Uint8ClampedArray(
+            processedMask.map((value: number) => value * 255)
+          ),
+          masks.dims[3],
+          masks.dims[2]
+        );
+
         context.globalAlpha = 0.5;
-        // convert image data to image bitmap
         let imageBitmap = await createImageBitmap(maskImageData);
-        context.drawImage(imageBitmap, 0, 0);
+        context.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
       } catch (error) {
         console.log(`caught error: ${error}`);
+        onStatusChange(`Error: ${error}`);
       }
       const end = Date.now();
       console.log(`generating masks took ${(end - start) / 1000} seconds`);
@@ -149,7 +177,13 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         `Mask generated. Click on the image to generate a new mask.`
       );
     },
-    [imageEmbeddings, imageImageData, onStatusChange]
+    [
+      imageEmbeddings,
+      imageImageData,
+      highResFeats,
+      onStatusChange,
+      isUsingMobileSam,
+    ]
   );
 
   useEffect(() => {

@@ -123,6 +123,21 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       console.log({ results });
       const imageData = imageDataTensor.toImageData();
       console.log({ results });
+
+      // Loop through each result and check for GPU data
+      for (const [key, tensor] of Object.entries(results)) {
+        if (tensor instanceof ONNX_WEBGPU.Tensor) {
+          // @ts-ignore
+          const gpuData = tensor?.gpuData;
+          if (gpuData) {
+            console.log(`${key} has GPU data`);
+          } else {
+            console.log(`${key} does not have GPU data`);
+          }
+        } else {
+          console.log(`${key} is not an ONNX_WEBGPU.Tensor`);
+        }
+      }
       onImageProcessed({
         image_embed: results.image_embed,
         high_res_feats_0: results.high_res_feats_0,

@@ -1905,7 +1905,7 @@
   resolved "https://registry.npmjs.org/@tensorflow/tfjs-layers/-/tfjs-layers-4.20.0.tgz"
   integrity sha512-SCHZH29Vyw+Y9eoaJHiaNo6yqM9vD3XCKncoczonRRywejm3FFqddg1AuWAfSE9XoNPE21o9PsknvKLl/Uh+Cg==
 
-"@tensorflow/tfjs@^4.11.0":
+"@tensorflow/tfjs@^4.20.0":
   version "4.20.0"
   resolved "https://registry.npmjs.org/@tensorflow/tfjs/-/tfjs-4.20.0.tgz"
   integrity sha512-+ZLfJq2jyIOE2/+yKPoyD/gfy3RZypbfMrlzvBDgodTK5jnexprihhX38hxilh9HPWvWQXJqiUjKJP5ECCikrw==
