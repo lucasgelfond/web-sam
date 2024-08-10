@@ -6,12 +6,14 @@ type ImageCanvasProps = {
   imageEmbeddings: any;
   imageImageData: ImageData | undefined;
   onStatusChange: (message: string) => void;
+  isUsingMobileSam?: boolean;
 };
 
 const ImageCanvas: React.FC<ImageCanvasProps> = ({
   imageEmbeddings,
   imageImageData,
   onStatusChange,
+  isUsingMobileSam,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -53,18 +55,19 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         new Float32Array([684, 1024]),
         [2]
       );
+
+      const url = isUsingMobileSam
+        ? "https://sam2-download.b-cdn.net/models/mobilesam.decoder.quant.onnx"
+        : "https://sam2-download.b-cdn.net/models/sam2_hiera_tiny.decoder.onnx";
       // Fetch the encoder model
-      const response = await fetch(
-        "https://sam2-download.b-cdn.net/models/mobilesam.decoder.quant.onnx",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/octet-stream",
-          },
-          mode: "cors",
-          credentials: "omit",
-        }
-      );
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+        mode: "cors",
+        credentials: "omit",
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

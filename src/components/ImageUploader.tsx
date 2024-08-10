@@ -7,11 +7,13 @@ import "../App.css";
 type ImageUploaderProps = {
   onImageProcessed: (embeddings: any, imageData: ImageData | undefined) => void;
   onStatusChange: (message: string) => void;
+  isUsingMobileSam?: boolean;
 };
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
   onImageProcessed,
   onStatusChange,
+  isUsingMobileSam = true,
 }) => {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -51,24 +53,17 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     tf_tensor = tf_tensor.reshape([3, 684, 1024]);
     tf_tensor = tf_tensor.transpose([1, 2, 0]).mul(255);
 
-    // ONNX_WEBGPU.env.wasm.numThreads = 1;
-    // any Blob that contains a valid ORT model would work
-    // const response = await fetch("models/mobilesam.encoder.onnx");
-    // const arrayBuffer = await (await response.blob()).arrayBuffer();
-    // const session = await ONNX_WEBGPU.InferenceSession.create(arrayBuffer, {
-    //   executionProviders: ["webgpu"],
-    // });
-    const response = await fetch(
-      "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx",
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-        mode: "cors",
-        credentials: "omit",
-      }
-    );
+    const url = isUsingMobileSam
+      ? "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx"
+      : "https://sam2-download.b-cdn.net/models/sam2_hiera_tiny.encoder.onnx";
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/octet-stream",
+      },
+      mode: "cors",
+      credentials: "omit",
+    });
 
     // Check if the response is ok
     if (!response.ok) {
@@ -122,6 +117,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const start = Date.now();
     try {
       const results = await session.run(feeds);
+      console.log({ results });
       const imageData = imageDataTensor.toImageData();
       onImageProcessed(results.image_embeddings, imageData);
     } catch (error) {
