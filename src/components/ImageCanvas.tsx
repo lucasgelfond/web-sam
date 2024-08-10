@@ -153,22 +153,97 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         const maskData = masks.data;
         const maskWidth = masks.dims[2];
         const maskHeight = masks.dims[3];
-        const rgbMaskData = new Uint8ClampedArray(maskWidth * maskHeight * 4);
+        const numMasks = masks.dims[0];
+        console.log({ maskWidth, maskHeight, numMasks });
 
-        for (let i = 0; i < maskData.length; i++) {
-          const value = maskData[i] * 255;
-          const index = i * 4;
-          rgbMaskData[index] = value; // Red
-          rgbMaskData[index + 1] = value; // Green
-          rgbMaskData[index + 2] = value; // Blue
-          rgbMaskData[index + 3] = 255; // Alpha
+        const bestMaskId = iou_predictions.data.indexOf(
+          Math.max(...iou_predictions.data)
+        );
+        console.log({ bestMaskId });
+
+        const drawMask = (
+          imageData: ImageData,
+          mask: Float32Array,
+          color: [number, number, number],
+          alpha: number = 0.5
+        ) => {
+          const imageDataCopy = new ImageData(
+            new Uint8ClampedArray(imageData.data),
+            imageData.width,
+            imageData.height
+          );
+          const scaleX = imageData.width / maskWidth;
+          const scaleY = imageData.height / maskHeight;
+
+          for (let y = 0; y < maskHeight; y++) {
+            for (let x = 0; x < maskWidth; x++) {
+              const maskIndex = y * maskWidth + x;
+              if (mask[maskIndex] > 0.01) {
+                const startX = Math.floor(x * scaleX);
+                const startY = Math.floor(y * scaleY);
+                const endX = Math.floor((x + 1) * scaleX);
+                const endY = Math.floor((y + 1) * scaleY);
+
+                for (let py = startY; py < endY; py++) {
+                  for (let px = startX; px < endX; px++) {
+                    const index = (py * imageData.width + px) * 4;
+                    imageDataCopy.data[index] = color[0];
+                    imageDataCopy.data[index + 1] = color[1];
+                    imageDataCopy.data[index + 2] = color[2];
+                  }
+                }
+              }
+            }
+          }
+
+          // Blend the mask with the original image
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            imageData.data[i] =
+              (1 - alpha) * imageData.data[i] + alpha * imageDataCopy.data[i];
+            imageData.data[i + 1] =
+              (1 - alpha) * imageData.data[i + 1] +
+              alpha * imageDataCopy.data[i + 1];
+            imageData.data[i + 2] =
+              (1 - alpha) * imageData.data[i + 2] +
+              alpha * imageDataCopy.data[i + 2];
+          }
+
+          return imageData;
+        };
+
+        const bestMask = new Float32Array(maskWidth * maskHeight);
+        for (let i = 0; i < maskWidth * maskHeight; i++) {
+          bestMask[i] = maskData[i + bestMaskId * maskWidth * maskHeight];
         }
 
-        const maskImageData = new ImageData(rgbMaskData, maskWidth, maskHeight);
-        context.globalAlpha = 0.5;
-        // Convert image data to image bitmap and resize to original image size
-        let imageBitmap = await createImageBitmap(maskImageData);
-        context.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+        let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        imageData = drawMask(imageData, bestMask, [0, 255, 0], 0.5);
+
+        context.putImageData(imageData, 0, 0);
+
+        // Draw contour (border)
+        const threshold = 0.01;
+        const scaleX = canvas.width / maskWidth;
+        const scaleY = canvas.height / maskHeight;
+        for (let y = 0; y < maskHeight; y++) {
+          for (let x = 0; x < maskWidth; x++) {
+            const i = y * maskWidth + x;
+            if (bestMask[i] > threshold) {
+              const hasLowerNeighbor =
+                (x > 0 && bestMask[i - 1] <= threshold) ||
+                (x < maskWidth - 1 && bestMask[i + 1] <= threshold) ||
+                (y > 0 && bestMask[i - maskWidth] <= threshold) ||
+                (y < maskHeight - 1 && bestMask[i + maskWidth] <= threshold);
+
+              if (hasLowerNeighbor) {
+                const canvasX = x * scaleX;
+                const canvasY = y * scaleY;
+                context.fillStyle = "rgb(255, 0, 0)";
+                context.fillRect(canvasX, canvasY, scaleX, scaleY);
+              }
+            }
+          }
+        }
       } catch (error) {
         console.log(`caught error: ${error}`);
         onStatusChange(`Error: ${error}`);

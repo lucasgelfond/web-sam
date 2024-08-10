@@ -142,7 +142,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         image_embed: results.image_embed,
         high_res_feats_0: results.high_res_feats_0,
         high_res_feats_1: results.high_res_feats_1,
-        imageData: imageData,
+        imageData: resizeImage,
       });
     } catch (error) {
       console.log(`caught error: ${error}`);
