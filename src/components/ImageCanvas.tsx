@@ -68,7 +68,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
 
       const url = isUsingMobileSam
         ? "https://sam2-download.b-cdn.net/models/mobilesam.decoder.quant.onnx"
-        : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.decoder.onnx";
+        : "https://sam2-download.b-cdn.net/sam2_hiera_small.decoder.onnx";
       // Fetch the decoder model
       const response = await fetch(url, {
         method: "GET",
