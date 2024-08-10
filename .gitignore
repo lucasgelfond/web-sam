@@ -23,3 +23,7 @@ yarn-debug.log*
 yarn-error.log*
 
 public/static/js/*.wasm
+public/models/mobilesam.decoder.quant.onnx
+public/models/mobilesam.encoder.onnx
+public/models/sam2_hiera_tiny.decoder.onnx
+public/models/sam2_hiera_tiny.encoder.onnx
