@@ -55,11 +55,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     // any Blob that contains a valid ORT model would work
     // I'm using Xenova/multilingual-e5-small/onnx/model_quantized.with_runtime_opt.ort
     const response = await fetch("models/mobilesam.encoder.onnx");
-    const buffer = await response.arrayBuffer();
-    const session = await ONNX_WEBGPU.InferenceSession.create(
-      "models/mobilesam.encoder.onnx",
-      { executionProviders: ["webgpu"] }
-    );
+    const arrayBuffer = await (await response.blob()).arrayBuffer();
+    const session = await ONNX_WEBGPU.InferenceSession.create(arrayBuffer, {
+      executionProviders: ["webgpu"],
+    });
     const feeds = {
       input_image: new ONNX_WEBGPU.Tensor(
         tf_tensor.dataSync(),
