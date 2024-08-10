@@ -9,10 +9,22 @@ function App() {
     undefined
   );
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [highResFeats, setHighResFeats] = useState<any>(null);
 
-  const onImageProcessed = (embeddings: any, data: ImageData | undefined) => {
-    setImageEmbeddings(embeddings);
-    setImageImageData(data);
+  const onImageProcessed = (params: {
+    image_embed: any;
+    high_res_feats_0: any;
+    high_res_feats_1: any;
+    imageData: ImageData | undefined;
+  }) => {
+    setImageEmbeddings({
+      image_embed: params.image_embed,
+    });
+    setHighResFeats({
+      high_res_feats_0: params.high_res_feats_0,
+      high_res_feats_1: params.high_res_feats_1,
+    });
+    setImageImageData(params.imageData);
   };
   const isUsingMobileSam = false;
 
@@ -27,6 +39,7 @@ function App() {
         isUsingMobileSam={isUsingMobileSam}
         imageEmbeddings={imageEmbeddings}
         imageImageData={imageImageData}
+        highResFeats={highResFeats}
         onStatusChange={setStatusMessage}
       />
       <div id="status">{statusMessage}</div>

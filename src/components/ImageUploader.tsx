@@ -5,7 +5,12 @@ import * as tf from "@tensorflow/tfjs";
 import "../App.css";
 
 type ImageUploaderProps = {
-  onImageProcessed: (embeddings: any, imageData: ImageData | undefined) => void;
+  onImageProcessed: (params: {
+    image_embed: any;
+    high_res_feats_0: any;
+    high_res_feats_1: any;
+    imageData: ImageData | undefined;
+  }) => void;
   onStatusChange: (message: string) => void;
   isUsingMobileSam?: boolean;
 };
@@ -41,7 +46,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     // ONNX_WEBGPU.env.wasm.numThreads = 1;
     const resizedTensor = await ONNX_WEBGPU.Tensor.fromImage(img, {
       resizedWidth: 1024,
-      resizedHeight: 684,
+      resizedHeight: 1024,
     });
     const resizeImage = resizedTensor.toImageData();
     const imageDataTensor = await ONNX_WEBGPU.Tensor.fromImage(resizeImage);
@@ -50,8 +55,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       imageDataTensor.data,
       imageDataTensor.dims as [number, number, number]
     );
-    tf_tensor = tf_tensor.reshape([3, 684, 1024]);
-    tf_tensor = tf_tensor.transpose([1, 2, 0]).mul(255);
+    tf_tensor = tf_tensor.reshape([1, 1024, 1024, 3]);
+    tf_tensor = tf_tensor.transpose([0, 3, 1, 2]).mul(255);
 
     const url = isUsingMobileSam
       ? "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx"
@@ -110,17 +115,20 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     console.log("Session created", session);
     const feeds = {
-      input_image: new ONNX_WEBGPU.Tensor(
-        tf_tensor.dataSync(),
-        tf_tensor.shape
-      ),
+      image: new ONNX_WEBGPU.Tensor(tf_tensor.dataSync(), tf_tensor.shape),
     };
     const start = Date.now();
     try {
       const results = await session.run(feeds);
       console.log({ results });
       const imageData = imageDataTensor.toImageData();
-      onImageProcessed(results.image_embeddings, imageData);
+      console.log({ results });
+      onImageProcessed({
+        image_embed: results.image_embed,
+        high_res_feats_0: results.high_res_feats_0,
+        high_res_feats_1: results.high_res_feats_1,
+        imageData: imageData,
+      });
     } catch (error) {
       console.log(`caught error: ${error}`);
       onStatusChange(`Error: ${error}`);

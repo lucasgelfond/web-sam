@@ -5,6 +5,7 @@ import * as ONNX_WEBGPU from "onnxruntime-web/webgpu";
 type ImageCanvasProps = {
   imageEmbeddings: any;
   imageImageData: ImageData | undefined;
+  highResFeats: any;
   onStatusChange: (message: string) => void;
   isUsingMobileSam?: boolean;
 };
@@ -12,6 +13,7 @@ type ImageCanvasProps = {
 const ImageCanvas: React.FC<ImageCanvasProps> = ({
   imageEmbeddings,
   imageImageData,
+  highResFeats,
   onStatusChange,
   isUsingMobileSam,
 }) => {
@@ -118,12 +120,15 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
       // );
       console.log("Decoder session", decodingSession);
       const decodingFeeds = {
-        image_embeddings: imageEmbeddings,
+        image_embed: imageEmbeddings.cpuData,
+        // @ts-ignore
+        high_res_feats_0: highResFeats.high_res_feats_0,
+        // @ts-ignore
+        high_res_feats_1: highResFeats.high_res_feats_1,
         point_coords: pointCoords,
         point_labels: pointLabels,
         mask_input: maskInput,
         has_mask_input: hasMask,
-        orig_im_size: originalImageSize,
       };
 
       const start = Date.now();
