@@ -53,12 +53,13 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         new Float32Array([684, 1024]),
         [2]
       );
-
-      ONNX_WEBGPU.env.wasm.numThreads = 1;
       const response = await fetch("models/mobilesam.decoder.quant.onnx");
       const arrayBuffer = await (await response.blob()).arrayBuffer();
       const decodingSession = await ONNX_WEBGPU.InferenceSession.create(
-        arrayBuffer
+        arrayBuffer,
+        {
+          executionProviders: ["webgpu"],
+        }
       );
       console.log("Decoder session", decodingSession);
       const decodingFeeds = {
