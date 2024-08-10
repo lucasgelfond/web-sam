@@ -147,26 +147,14 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
           iou_predictions: true,
         });
         console.log("Decoding results", results);
-        const masks = results.masks;
-        const scores = results.scores;
-
+        const { masks, iou_predictions } = results;
+        console.log({ masks, iou_predictions });
         // Process the output
-        const maskThreshold = 0.0;
-        const processedMask = masks.data.map((value: number) =>
-          value > maskThreshold ? 1 : 0
-        );
-
-        const maskImageData = new ImageData(
-          new Uint8ClampedArray(
-            processedMask.map((value: number) => value * 255)
-          ),
-          masks.dims[3],
-          masks.dims[2]
-        );
-
+        const maskImageData = masks.toImageData();
         context.globalAlpha = 0.5;
+        // convert image data to image bitmap
         let imageBitmap = await createImageBitmap(maskImageData);
-        context.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+        context.drawImage(imageBitmap, 0, 0);
       } catch (error) {
         console.log(`caught error: ${error}`);
         onStatusChange(`Error: ${error}`);
