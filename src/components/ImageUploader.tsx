@@ -55,7 +55,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     const url = isUsingMobileSam
       ? "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx"
-      : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.encoder.ort";
+      : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.encoder.with_runtime_opt.ort";
     const response = await fetch(url, {
       method: "GET",
       headers: {
