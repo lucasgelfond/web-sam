@@ -55,7 +55,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     const url = isUsingMobileSam
       ? "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx"
-      : "https://sam2-download.b-cdn.net/models/sam2_hiera_tiny.encoder.onnx";
+      : "https://sam2-download.b-cdn.net/sam2_hiera_tiny.encoder.ort";
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -105,6 +105,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     // Create the inference session using the downloaded model data
     const session = await ONNX_WEBGPU.InferenceSession.create(arrayBuffer, {
       executionProviders: ["webgpu"],
+      graphOptimizationLevel: "disabled",
     });
 
     console.log("Session created", session);
