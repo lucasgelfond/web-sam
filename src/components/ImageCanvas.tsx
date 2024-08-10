@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect } from "react";
-import * as ort from "onnxruntime-web";
+// @ts-ignore
+import * as ONNX_WEBGPU from "onnxruntime-web/webgpu";
 
 type ImageCanvasProps = {
   imageEmbeddings: any;
@@ -35,22 +36,26 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
       context.putImageData(imageImageData, 0, 0);
       context.fillStyle = "green";
       context.fillRect(x, y, 5, 5);
-      const pointCoords = new ort.Tensor(
+      const pointCoords = new ONNX_WEBGPU.Tensor(
         new Float32Array([x, y, 0, 0]),
         [1, 2, 2]
       );
-      const pointLabels = new ort.Tensor(new Float32Array([0, -1]), [1, 2]);
-      const maskInput = new ort.Tensor(
+      const pointLabels = new ONNX_WEBGPU.Tensor(
+        new Float32Array([0, -1]),
+        [1, 2]
+      );
+      const maskInput = new ONNX_WEBGPU.Tensor(
         new Float32Array(256 * 256),
         [1, 1, 256, 256]
       );
-      const hasMask = new ort.Tensor(new Float32Array([0]), [1]);
-      const originalImageSize = new ort.Tensor(new Float32Array([684, 1024]), [
-        2,
-      ]);
+      const hasMask = new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]);
+      const originalImageSize = new ONNX_WEBGPU.Tensor(
+        new Float32Array([684, 1024]),
+        [2]
+      );
 
-      ort.env.wasm.numThreads = 1;
-      const decodingSession = await ort.InferenceSession.create(
+      ONNX_WEBGPU.env.wasm.numThreads = 1;
+      const decodingSession = await ONNX_WEBGPU.InferenceSession.create(
         "models/mobilesam.decoder.quant.onnx"
       );
       console.log("Decoder session", decodingSession);

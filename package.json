@@ -11,7 +11,7 @@
     "@types/node": "^16.18.58",
     "@types/react": "^18.2.25",
     "@types/react-dom": "^18.2.11",
-    "onnxruntime-web": "^1.16.0",
+    "onnxruntime-web": "^1.19.0-dev.20240801-4b8f6dcbb6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
-import * as ort from "onnxruntime-web";
+// @ts-ignore
+import * as ONNX_WEBGPU from "onnxruntime-web/webgpu";
 import * as tf from "@tensorflow/tfjs";
 import "../App.css";
 
@@ -35,13 +36,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       `Uploaded image is ${img.width}x${img.height}px. Loading the encoder model (~28 MB).`
     );
     setIsLoading(true);
-    ort.env.wasm.numThreads = 1;
-    const resizedTensor = await ort.Tensor.fromImage(img, {
+    ONNX_WEBGPU.env.wasm.numThreads = 1;
+    const resizedTensor = await ONNX_WEBGPU.Tensor.fromImage(img, {
       resizedWidth: 1024,
       resizedHeight: 684,
     });
     const resizeImage = resizedTensor.toImageData();
-    const imageDataTensor = await ort.Tensor.fromImage(resizeImage);
+    const imageDataTensor = await ONNX_WEBGPU.Tensor.fromImage(resizeImage);
 
     let tf_tensor = tf.tensor(
       imageDataTensor.data,
@@ -50,12 +51,20 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     tf_tensor = tf_tensor.reshape([3, 684, 1024]);
     tf_tensor = tf_tensor.transpose([1, 2, 0]).mul(255);
 
-    ort.env.wasm.numThreads = 1;
-    const session = await ort.InferenceSession.create(
-      "models/mobilesam.encoder.onnx"
+    ONNX_WEBGPU.env.wasm.numThreads = 1;
+    // any Blob that contains a valid ORT model would work
+    // I'm using Xenova/multilingual-e5-small/onnx/model_quantized.with_runtime_opt.ort
+    const response = await fetch("models/mobilesam.encoder.onnx");
+    const buffer = await response.arrayBuffer();
+    const session = await ONNX_WEBGPU.InferenceSession.create(
+      "models/mobilesam.encoder.onnx",
+      { executionProviders: ["webgpu"] }
     );
     const feeds = {
-      input_image: new ort.Tensor(tf_tensor.dataSync(), tf_tensor.shape),
+      input_image: new ONNX_WEBGPU.Tensor(
+        tf_tensor.dataSync(),
+        tf_tensor.shape
+      ),
     };
     const start = Date.now();
     try {
