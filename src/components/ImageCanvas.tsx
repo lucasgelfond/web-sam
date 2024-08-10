@@ -150,7 +150,21 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         const { masks, iou_predictions } = results;
         console.log({ masks, iou_predictions });
         // Process the output
-        const maskImageData = masks.toImageData();
+        const maskData = masks.data;
+        const maskWidth = masks.dims[2];
+        const maskHeight = masks.dims[3];
+        const rgbMaskData = new Uint8ClampedArray(maskWidth * maskHeight * 4);
+
+        for (let i = 0; i < maskData.length; i++) {
+          const value = maskData[i] * 255;
+          const index = i * 4;
+          rgbMaskData[index] = value; // Red
+          rgbMaskData[index + 1] = value; // Green
+          rgbMaskData[index + 2] = value; // Blue
+          rgbMaskData[index + 3] = 255; // Alpha
+        }
+
+        const maskImageData = new ImageData(rgbMaskData, maskWidth, maskHeight);
         context.globalAlpha = 0.5;
         // Convert image data to image bitmap and resize to original image size
         let imageBitmap = await createImageBitmap(maskImageData);
