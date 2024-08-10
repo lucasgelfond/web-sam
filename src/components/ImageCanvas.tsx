@@ -152,9 +152,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         // Process the output
         const maskImageData = masks.toImageData();
         context.globalAlpha = 0.5;
-        // convert image data to image bitmap
+        // Convert image data to image bitmap and resize to original image size
         let imageBitmap = await createImageBitmap(maskImageData);
-        context.drawImage(imageBitmap, 0, 0);
+        context.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
       } catch (error) {
         console.log(`caught error: ${error}`);
         onStatusChange(`Error: ${error}`);
