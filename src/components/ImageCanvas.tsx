@@ -39,8 +39,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
       canvas.width = imageImageData.width;
       canvas.height = imageImageData.height;
       context.putImageData(imageImageData, 0, 0);
-      context.fillStyle = "green";
-      context.fillRect(x, y, 5, 5);
+      context.fillStyle = "rgba(0, 0, 139, 0.7)"; // Dark blue with some transparency
+      context.fillRect(x - 1, y - 1, 2, 2); // Smaller 2x2 pixel
 
       const preparePoints = (coords: number[], labels: number[]) => {
         const inputPointCoords = new Float32Array([coords[0], coords[1], 0, 0]);
@@ -94,9 +94,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
 
         // Draw all three masks
         const colors = [
-          [255, 0, 0],
-          [0, 255, 0],
-          [0, 0, 255],
+          [0, 0, 139],
+          [0, 0, 139],
+          [0, 0, 139],
         ];
         for (let i = 0; i < numMasks; i++) {
           const mask = selectMask(masks, i);
