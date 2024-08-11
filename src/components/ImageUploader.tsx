@@ -51,8 +51,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const ctx = canvas.getContext("2d");
 
     if (ctx) {
-      // Calculate the scaling factor to maintain aspect ratio
-      const scale = Math.max(1024 / img.width, 1024 / img.height);
+      // Calculate the scaling factor to fit the image within 1024x1024
+      const scale = Math.min(1024 / img.width, 1024 / img.height);
       const scaledWidth = img.width * scale;
       const scaledHeight = img.height * scale;
 
@@ -60,7 +60,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       const x = (1024 - scaledWidth) / 2;
       const y = (1024 - scaledHeight) / 2;
 
-      // Draw the image onto the canvas, resizing it
+      // Fill the canvas with white background
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      // Draw the image onto the canvas, resizing it and adding space
       ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
 
       // Convert canvas to blob
