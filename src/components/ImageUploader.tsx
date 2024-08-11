@@ -43,20 +43,62 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       `Uploaded image is ${img.width}x${img.height}px. Loading the encoder model (~28 MB).`
     );
     setIsLoading(true);
-    // ONNX_WEBGPU.env.wasm.numThreads = 1;
-    const resizedTensor = await ONNX_WEBGPU.Tensor.fromImage(img, {
-      resizedWidth: 1024,
-      resizedHeight: 1024,
-    });
-    const resizeImage = resizedTensor.toImageData();
-    const imageDataTensor = await ONNX_WEBGPU.Tensor.fromImage(resizeImage);
 
-    let tf_tensor = tf.tensor(
-      imageDataTensor.data,
-      imageDataTensor.dims as [number, number, number]
-    );
-    tf_tensor = tf_tensor.reshape([1, 1024, 1024, 3]);
-    tf_tensor = tf_tensor.transpose([0, 3, 1, 2]).mul(255);
+    // Create a canvas element to resize the image
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext("2d");
+
+    if (ctx) {
+      // Calculate the scaling factor to maintain aspect ratio
+      const scale = Math.max(1024 / img.width, 1024 / img.height);
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+
+      // Calculate position to center the image
+      const x = (1024 - scaledWidth) / 2;
+      const y = (1024 - scaledHeight) / 2;
+
+      // Draw the image onto the canvas, resizing it
+      ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create a download link
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "resized_image.png";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }, "image/png");
+    }
+    // Get the image data from the canvas
+    // @ts-ignore
+    const imageData = ctx.getImageData(0, 0, 1024, 1024);
+    const rgbData = [];
+
+    // Remove alpha channel and flatten the data
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      rgbData.push(imageData.data[i]); // R
+      rgbData.push(imageData.data[i + 1]); // G
+      rgbData.push(imageData.data[i + 2]); // B
+      // Alpha channel (imageData.data[i + 3]) is discarded
+    }
+
+    // Create a tensor with shape [1024, 1024, 3]
+    const tensor = tf.tensor3d(rgbData, [1024, 1024, 3]);
+
+    // Transpose and reshape to [1, 3, 1024, 1024]
+    const batchedTensor = tf.tidy(() => {
+      const transposed = tf.transpose(tensor, [2, 0, 1]);
+      return tf.expandDims(transposed, 0);
+    });
 
     const url = isUsingMobileSam
       ? "https://sam2-download.b-cdn.net/models/mobilesam.encoder.onnx"
@@ -115,14 +157,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     console.log("Session created", session);
     const feeds = {
-      image: new ONNX_WEBGPU.Tensor(tf_tensor.dataSync(), tf_tensor.shape),
+      image: new ONNX_WEBGPU.Tensor(
+        batchedTensor.dataSync(),
+        batchedTensor.shape
+      ),
     };
     const start = Date.now();
     try {
       const results = await session.run(feeds);
-      console.log({ results });
-      const imageData = imageDataTensor.toImageData();
-      console.log({ results });
 
       // Loop through each result and check for GPU data
       for (const [key, tensor] of Object.entries(results)) {
@@ -142,7 +184,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         image_embed: results.image_embed,
         high_res_feats_0: results.high_res_feats_0,
         high_res_feats_1: results.high_res_feats_1,
-        imageData: resizeImage,
+        // @ts-ignore
+        imageData: ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height),
       });
     } catch (error) {
       console.log(`caught error: ${error}`);

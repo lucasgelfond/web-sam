@@ -93,29 +93,31 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({
         }
       );
 
-      const prepareInputs = (
-        imageEmbed: ONNX_WEBGPU.Tensor,
-        highResFeats0: ONNX_WEBGPU.Tensor,
-        highResFeats1: ONNX_WEBGPU.Tensor,
-        pointCoords: ONNX_WEBGPU.Tensor,
-        pointLabels: ONNX_WEBGPU.Tensor
-      ) => {
-        const maskInput = new ONNX_WEBGPU.Tensor(
-          new Float32Array(256 * 256),
-          [1, 1, 256, 256]
-        );
-        const hasMaskInput = new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]);
+      // const prepareInputs = (
+      //   imageEmbed: ONNX_WEBGPU.Tensor,
+      //   highResFeats0: ONNX_WEBGPU.Tensor,
+      //   highResFeats1: ONNX_WEBGPU.Tensor,
+      //   pointCoords: ONNX_WEBGPU.Tensor,
+      //   pointLabels: ONNX_WEBGPU.Tensor
+      // ) => {
+      //   const maskInput = new ONNX_WEBGPU.Tensor(
+      //     new Float32Array(256 * 256),
+      //     [1, 1, 256, 256]
+      //   );
+      //   const hasMaskInput = new ONNX_WEBGPU.Tensor(new Float32Array([0]), [1]);
 
-        return {
-          image_embed: imageEmbed,
-          high_res_feats_0: highResFeats0,
-          high_res_feats_1: highResFeats1,
-          point_coords: pointCoords,
-          point_labels: pointLabels,
-          mask_input: maskInput,
-          has_mask_input: hasMaskInput,
-        };
-      };
+      //   return {
+      //     image_embed: imageEmbed,
+      //     high_res_feats_0: highResFeats0,
+      //     high_res_feats_1: highResFeats1,
+      //     point_coords: pointCoords,
+      //     point_labels: pointLabels,
+      //     mask_input: maskInput,
+      //     has_mask_input: hasMaskInput,
+      //   };
+      // };
+
+      console.log(imageImageData.width, imageImageData.height);
 
       const decodingFeeds = {
         image_embed: new ONNX_WEBGPU.Tensor(
